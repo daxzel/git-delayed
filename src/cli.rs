@@ -110,6 +110,7 @@ fn handle_schedule(time_spec: &str, operation_type: OperationType, message: &str
         scheduled_time,
         created_at: Local::now(),
         retry_count: 0,
+        state: crate::models::OperationState::Pending,
     };
     
     storage::add_scheduled_operation(operation.clone())?;
@@ -137,12 +138,12 @@ fn handle_list() -> Result<()> {
     operations.operations.sort_by_key(|op| op.scheduled_time);
     
     println!("\nScheduled Operations:");
-    println!("{:-<110}", "");
+    println!("{:-<120}", "");
     println!(
-        "{:<38} | {:<19} | {:<8} | {:<20} | {}",
-        "ID", "Scheduled Time", "Type", "Repository", "Message"
+        "{:<38} | {:<19} | {:<8} | {:<8} | {:<20} | {}",
+        "ID", "Scheduled Time", "Type", "State", "Repository", "Message"
     );
-    println!("{:-<110}", "");
+    println!("{:-<120}", "");
     
     for op in operations.operations {
         let repo_name = op
@@ -152,16 +153,17 @@ fn handle_list() -> Result<()> {
             .unwrap_or("unknown");
         
         println!(
-            "{:<38} | {} | {:<8} | {:<20} | {}",
+            "{:<38} | {} | {:<8} | {:<8} | {:<20} | {}",
             op.id,
             op.scheduled_time.format("%Y-%m-%d %H:%M:%S"),
             op.operation_type,
+            op.state,
             repo_name,
             op.commit_message
         );
     }
     
-    println!("{:-<110}", "");
+    println!("{:-<120}", "");
     
     Ok(())
 }

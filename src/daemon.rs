@@ -50,8 +50,13 @@ pub fn is_daemon_running() -> Result<bool> {
 pub fn run_daemon_loop() -> Result<()> {
     loop {
         let now = Local::now();
-        let operations = storage::load_scheduled_operations()?;
+        let mut operations = storage::load_scheduled_operations()?;
         
+        // sort by scheduled time to process in order
+        operations.operations.sort_by_key(|op| op.scheduled_time);
+        
+        // process only the first due operation, then break
+        // this ensures sequential execution
         for mut operation in operations.operations {
             if operation.scheduled_time <= now {
                 let result = match operation.operation_type {
@@ -82,6 +87,7 @@ pub fn run_daemon_loop() -> Result<()> {
                     }
                     Err(e) => {
                         operation.retry_count += 1;
+                        operation.state = crate::models::OperationState::Failing;
                         operation.scheduled_time = Local::now() + ChronoDuration::minutes(10);
                         
                         storage::append_log_entry(LogEntry {
@@ -98,6 +104,9 @@ pub fn run_daemon_loop() -> Result<()> {
                         storage::add_scheduled_operation(operation)?;
                     }
                 }
+                
+                // only process one operation per loop iteration
+                break;
             }
         }
         

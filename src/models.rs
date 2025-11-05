@@ -18,6 +18,21 @@ impl fmt::Display for OperationType {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum OperationState {
+    Pending,
+    Failing,
+}
+
+impl fmt::Display for OperationState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            OperationState::Pending => write!(f, "pending"),
+            OperationState::Failing => write!(f, "failing"),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ScheduledOperation {
     pub id: String,
@@ -28,6 +43,14 @@ pub struct ScheduledOperation {
     pub created_at: DateTime<Local>,
     #[serde(default)]
     pub retry_count: u32,
+    #[serde(default)]
+    pub state: OperationState,
+}
+
+impl Default for OperationState {
+    fn default() -> Self {
+        OperationState::Pending
+    }
 }
 
 impl fmt::Display for ScheduledOperation {
