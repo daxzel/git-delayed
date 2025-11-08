@@ -146,12 +146,12 @@ fn handle_list() -> Result<()> {
     operations.operations.sort_by_key(|op| op.scheduled_time);
     
     println!("\nScheduled Operations:");
-    println!("{:-<120}", "");
+    println!("{:-<130}", "");
     println!(
-        "{:<38} | {:<19} | {:<8} | {:<8} | {:<20} | {}",
-        "ID", "Scheduled Time", "Type", "State", "Repository", "Message"
+        "{:<38} | {:<19} | {:<8} | {:<8} | {:<20} | {:<15} | {}",
+        "ID", "Scheduled Time", "Type", "State", "Repository", "Branch", "Message"
     );
-    println!("{:-<120}", "");
+    println!("{:-<130}", "");
     
     for op in operations.operations {
         let repo_name = op
@@ -160,18 +160,21 @@ fn handle_list() -> Result<()> {
             .and_then(|n| n.to_str())
             .unwrap_or("unknown");
         
+        let branch_display = op.branch.as_deref().unwrap_or("-");
+        
         println!(
-            "{:<38} | {} | {:<8} | {:<8} | {:<20} | {}",
+            "{:<38} | {} | {:<8} | {:<8} | {:<20} | {:<15} | {}",
             op.id,
             op.scheduled_time.format("%Y-%m-%d %H:%M:%S"),
             op.operation_type,
             op.state,
             repo_name,
+            branch_display,
             op.commit_message
         );
     }
     
-    println!("{:-<120}", "");
+    println!("{:-<130}", "");
     
     Ok(())
 }
