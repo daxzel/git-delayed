@@ -45,6 +45,8 @@ pub struct ScheduledOperation {
     pub retry_count: u32,
     #[serde(default)]
     pub state: OperationState,
+    #[serde(default)]
+    pub branch: Option<String>,
 }
 
 impl Default for OperationState {
@@ -72,6 +74,7 @@ pub enum ExecutionStatus {
     Success,
     Failure,
     Cancelled,
+    Skipped,
 }
 
 impl fmt::Display for ExecutionStatus {
@@ -80,6 +83,7 @@ impl fmt::Display for ExecutionStatus {
             ExecutionStatus::Success => write!(f, "Success"),
             ExecutionStatus::Failure => write!(f, "Failure"),
             ExecutionStatus::Cancelled => write!(f, "Cancelled"),
+            ExecutionStatus::Skipped => write!(f, "Skipped"),
         }
     }
 }

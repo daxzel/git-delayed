@@ -102,6 +102,13 @@ fn handle_schedule(time_spec: &str, operation_type: OperationType, message: &str
     let repo_path = git::get_repository_path()?;
     let scheduled_time = schedule::parse_time_spec(time_spec)?;
     
+    // capture current branch for push operations
+    let branch = if operation_type == OperationType::Push {
+        Some(git::get_current_branch(&repo_path)?)
+    } else {
+        None
+    };
+    
     let operation = ScheduledOperation {
         id: Uuid::new_v4().to_string(),
         repository_path: repo_path.clone(),
@@ -111,6 +118,7 @@ fn handle_schedule(time_spec: &str, operation_type: OperationType, message: &str
         created_at: Local::now(),
         retry_count: 0,
         state: crate::models::OperationState::Pending,
+        branch,
     };
     
     storage::add_scheduled_operation(operation.clone())?;
@@ -193,6 +201,7 @@ fn handle_logs() -> Result<()> {
             ExecutionStatus::Success => format!("\x1b[32m{}\x1b[0m", entry.status),
             ExecutionStatus::Failure => format!("\x1b[31m{}\x1b[0m", entry.status),
             ExecutionStatus::Cancelled => format!("\x1b[33m{}\x1b[0m", entry.status),
+            ExecutionStatus::Skipped => format!("\x1b[36m{}\x1b[0m", entry.status),
         };
         
         println!(

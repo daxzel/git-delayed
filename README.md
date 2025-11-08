@@ -38,7 +38,16 @@ git delayed logs
 
 ## How it works
 
-Operations get stored locally. A daemon checks every minute if anything needs to run. If something fails (network issues, auth problems, whatever), it retries every 10 minutes until it works.
+Operations get stored locally with the current branch (for pushes). A daemon checks every minute and processes operations one at a time, in order.
+
+For pushes:
+1. Stashes any uncommitted changes
+2. Switches to the target branch
+3. Pushes
+4. Switches back to original branch
+5. Unstashes changes
+
+If something fails, it retries every 10 minutes. If there's nothing to push, it's marked as skipped.
 
 Storage is at:
 - macOS: `~/Library/Application Support/git-delayed/`

@@ -59,49 +59,90 @@ pub fn run_daemon_loop() -> Result<()> {
         // this ensures sequential execution
         for mut operation in operations.operations {
             if operation.scheduled_time <= now {
-                let result = match operation.operation_type {
-                    OperationType::Commit => executor::execute_commit(
-                        &operation.repository_path,
-                        &operation.commit_message,
-                    )
-                    .map(|_| ()),
-                    OperationType::Push => {
-                        executor::execute_push(&operation.repository_path).map(|_| ())
-                    }
-                };
-                
                 storage::remove_scheduled_operation(&operation.id)?;
                 
-                match result {
-                    Ok(_) => {
-                        storage::append_log_entry(LogEntry {
-                            id: operation.id,
-                            repository_path: operation.repository_path,
-                            operation_type: operation.operation_type,
-                            commit_message: operation.commit_message,
-                            scheduled_time: operation.scheduled_time,
-                            executed_at: Local::now(),
-                            status: ExecutionStatus::Success,
-                            error_message: None,
-                        })?;
+                // handle push operations specially
+                if operation.operation_type == OperationType::Push {
+                    match executor::execute_push_with_branch(
+                        &operation.repository_path,
+                        operation.branch.as_deref(),
+                    ) {
+                        Ok(executor::PushResult::Success(_)) => {
+                            storage::append_log_entry(LogEntry {
+                                id: operation.id,
+                                repository_path: operation.repository_path,
+                                operation_type: operation.operation_type,
+                                commit_message: operation.commit_message,
+                                scheduled_time: operation.scheduled_time,
+                                executed_at: Local::now(),
+                                status: ExecutionStatus::Success,
+                                error_message: None,
+                            })?;
+                        }
+                        Ok(executor::PushResult::NothingToPush) => {
+                            storage::append_log_entry(LogEntry {
+                                id: operation.id,
+                                repository_path: operation.repository_path,
+                                operation_type: operation.operation_type,
+                                commit_message: operation.commit_message,
+                                scheduled_time: operation.scheduled_time,
+                                executed_at: Local::now(),
+                                status: ExecutionStatus::Skipped,
+                                error_message: Some("nothing to push".to_string()),
+                            })?;
+                        }
+                        Err(e) => {
+                            operation.retry_count += 1;
+                            operation.state = crate::models::OperationState::Failing;
+                            operation.scheduled_time = Local::now() + ChronoDuration::minutes(10);
+                            
+                            storage::append_log_entry(LogEntry {
+                                id: operation.id.clone(),
+                                repository_path: operation.repository_path.clone(),
+                                operation_type: operation.operation_type.clone(),
+                                commit_message: format!("{} (retry {})", operation.commit_message, operation.retry_count),
+                                scheduled_time: operation.scheduled_time,
+                                executed_at: Local::now(),
+                                status: ExecutionStatus::Failure,
+                                error_message: Some(format!("retry {}: {}", operation.retry_count, e)),
+                            })?;
+                            
+                            storage::add_scheduled_operation(operation)?;
+                        }
                     }
-                    Err(e) => {
-                        operation.retry_count += 1;
-                        operation.state = crate::models::OperationState::Failing;
-                        operation.scheduled_time = Local::now() + ChronoDuration::minutes(10);
-                        
-                        storage::append_log_entry(LogEntry {
-                            id: operation.id.clone(),
-                            repository_path: operation.repository_path.clone(),
-                            operation_type: operation.operation_type.clone(),
-                            commit_message: format!("{} (retry {})", operation.commit_message, operation.retry_count),
-                            scheduled_time: operation.scheduled_time,
-                            executed_at: Local::now(),
-                            status: ExecutionStatus::Failure,
-                            error_message: Some(format!("retry {}: {}", operation.retry_count, e)),
-                        })?;
-                        
-                        storage::add_scheduled_operation(operation)?;
+                } else {
+                    // handle commit operations
+                    match executor::execute_commit(&operation.repository_path, &operation.commit_message) {
+                        Ok(_) => {
+                            storage::append_log_entry(LogEntry {
+                                id: operation.id,
+                                repository_path: operation.repository_path,
+                                operation_type: operation.operation_type,
+                                commit_message: operation.commit_message,
+                                scheduled_time: operation.scheduled_time,
+                                executed_at: Local::now(),
+                                status: ExecutionStatus::Success,
+                                error_message: None,
+                            })?;
+                        }
+                        Err(e) => {
+                            operation.retry_count += 1;
+                            operation.state = crate::models::OperationState::Failing;
+                            operation.scheduled_time = Local::now() + ChronoDuration::minutes(10);
+                            
+                            storage::append_log_entry(LogEntry {
+                                id: operation.id.clone(),
+                                repository_path: operation.repository_path.clone(),
+                                operation_type: operation.operation_type.clone(),
+                                commit_message: format!("{} (retry {})", operation.commit_message, operation.retry_count),
+                                scheduled_time: operation.scheduled_time,
+                                executed_at: Local::now(),
+                                status: ExecutionStatus::Failure,
+                                error_message: Some(format!("retry {}: {}", operation.retry_count, e)),
+                            })?;
+                            
+                            storage::add_scheduled_operation(operation)?;
+                        }
                     }
                 }
                 

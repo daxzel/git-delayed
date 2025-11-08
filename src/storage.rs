@@ -168,6 +168,7 @@ mod tests {
             created_at: Local::now(),
             retry_count: 0,
             state: crate::models::OperationState::Pending,
+            branch: None,
         };
 
         add_scheduled_operation(op).unwrap();
