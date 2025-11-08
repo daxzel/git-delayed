@@ -14,6 +14,14 @@ Sometimes you want to commit your work but not push it immediately. Maybe you're
 
 That's it. The daemon starts automatically and will run on boot.
 
+## Uninstall
+
+```bash
+./uninstall.sh
+```
+
+This removes the daemon, service, and binary. Your scheduled operations data is preserved but the script shows you where it is if you want to remove it manually.
+
 ## Usage
 
 ```bash
