@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::{Duration as ChronoDuration, Local};
 use daemonize::Daemonize;
 use std::fs;

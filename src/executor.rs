@@ -4,7 +4,7 @@ use std::process::Command;
 
 #[derive(Debug)]
 pub enum PushResult {
-    Success(String),
+    Success(()),
     NothingToPush,
 }
 
@@ -82,11 +82,7 @@ pub fn execute_push_with_branch(repo_path: &Path, branch: Option<&str>) -> Resul
         .output()?;
     
     let push_result = if output.status.success() {
-        Ok(PushResult::Success(format!(
-            "{}{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        )))
+        Ok(PushResult::Success(()))
     } else {
         Err(anyhow::anyhow!(
             "push failed: {}",
@@ -113,12 +109,5 @@ pub fn execute_push_with_branch(repo_path: &Path, branch: Option<&str>) -> Resul
     push_result
 }
 
-// backward compat - push without branch switching
-pub fn execute_push(repo_path: &Path) -> Result<String> {
-    match execute_push_with_branch(repo_path, None)? {
-        PushResult::Success(msg) => Ok(msg),
-        PushResult::NothingToPush => Ok("nothing to push".to_string()),
-    }
-}
 
 
