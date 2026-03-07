@@ -7,6 +7,7 @@ use std::path::PathBuf;
 pub enum OperationType {
     Commit,
     Push,
+    MergeCommit,
 }
 
 impl fmt::Display for OperationType {
@@ -14,6 +15,7 @@ impl fmt::Display for OperationType {
         match self {
             OperationType::Commit => write!(f, "commit"),
             OperationType::Push => write!(f, "push"),
+            OperationType::MergeCommit => write!(f, "merge-commit"),
         }
     }
 }
@@ -47,6 +49,10 @@ pub struct ScheduledOperation {
     pub state: OperationState,
     #[serde(default)]
     pub branch: Option<String>,
+    #[serde(default)]
+    pub source_branch: Option<String>,
+    #[serde(default)]
+    pub target_branch: Option<String>,
 }
 
 impl Default for OperationState {

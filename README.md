@@ -1,10 +1,10 @@
 # git-delayed
 
-Schedule git commits and pushes for later. Useful when you want to work now but push later.
+Schedule git commits, pushes, and merges for later. Useful when you want to work now but push later.
 
 ## Why?
 
-Sometimes you want to commit your work but not push it immediately. Maybe you're working offline and want to push when you get internet. Or you want to batch your pushes. Whatever the reason, this tool lets you schedule when your commits and pushes happen.
+Sometimes you want to commit your work but not push it immediately. Maybe you're working offline and want to push when you get internet. Or you want to batch your pushes. Or you want to schedule a merge for a specific date. Whatever the reason, this tool lets you schedule when your git operations happen.
 
 ## Install
 
@@ -31,6 +31,9 @@ git delayed schedule "+10 hours" commit -m "feat: add thing"
 # schedule a push for Monday morning
 git delayed schedule "Monday" push
 
+# schedule a squash merge from feature into main on a specific date
+git delayed schedule "2025-12-25 09:00" merge-commit --from feature --into main
+
 # see what's scheduled
 git delayed list
 
@@ -54,6 +57,14 @@ For pushes:
 3. Pushes
 4. Switches back to original branch
 5. Unstashes changes
+
+For merge-commits:
+1. Stashes any uncommitted changes
+2. Switches to the target branch
+3. Runs `git merge --squash` from the source branch
+4. Commits with the source branch's last commit message
+5. Switches back to original branch
+6. Unstashes changes
 
 If something fails, it retries every 10 minutes. If there's nothing to push, it's marked as skipped.
 

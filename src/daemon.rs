@@ -110,6 +110,43 @@ pub fn run_daemon_loop() -> Result<()> {
                             storage::add_scheduled_operation(operation)?;
                         }
                     }
+                } else if operation.operation_type == OperationType::MergeCommit {
+                    let result = match (operation.source_branch.as_deref(), operation.target_branch.as_deref()) {
+                        (Some(src), Some(tgt)) => executor::execute_merge(&operation.repository_path, src, tgt),
+                        _ => Err(anyhow::anyhow!("merge operation missing source or target branch")),
+                    };
+                    match result {
+                        Ok(_) => {
+                            storage::append_log_entry(LogEntry {
+                                id: operation.id,
+                                repository_path: operation.repository_path,
+                                operation_type: operation.operation_type,
+                                commit_message: operation.commit_message,
+                                scheduled_time: operation.scheduled_time,
+                                executed_at: Local::now(),
+                                status: ExecutionStatus::Success,
+                                error_message: None,
+                            })?;
+                        }
+                        Err(e) => {
+                            operation.retry_count += 1;
+                            operation.state = crate::models::OperationState::Failing;
+                            operation.scheduled_time = Local::now() + ChronoDuration::minutes(10);
+                            
+                            storage::append_log_entry(LogEntry {
+                                id: operation.id.clone(),
+                                repository_path: operation.repository_path.clone(),
+                                operation_type: operation.operation_type.clone(),
+                                commit_message: format!("{} (retry {})", operation.commit_message, operation.retry_count),
+                                scheduled_time: operation.scheduled_time,
+                                executed_at: Local::now(),
+                                status: ExecutionStatus::Failure,
+                                error_message: Some(format!("retry {}: {}", operation.retry_count, e)),
+                            })?;
+                            
+                            storage::add_scheduled_operation(operation)?;
+                        }
+                    }
                 } else {
                     // handle commit operations
                     match executor::execute_commit(&operation.repository_path, &operation.commit_message) {

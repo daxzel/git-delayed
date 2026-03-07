@@ -57,6 +57,15 @@ enum ScheduleAction {
     
     #[command(about = "Schedule a push only")]
     Push,
+    
+    #[command(name = "merge-commit", about = "Schedule a squash merge from one branch into another, preserving the source branch's last commit message")]
+    MergeCommit {
+        #[arg(long, help = "Source branch to merge from")]
+        from: String,
+        
+        #[arg(long, help = "Target branch to merge into")]
+        into: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -77,9 +86,12 @@ pub fn run() -> Result<()> {
     match cli.command {
         Commands::Schedule { time_spec, action } => match action {
             ScheduleAction::Commit { message } => {
-                handle_schedule(&time_spec, OperationType::Commit, &message)
+                handle_schedule(&time_spec, OperationType::Commit, &message, None, None)
             }
-            ScheduleAction::Push => handle_schedule(&time_spec, OperationType::Push, "push"),
+            ScheduleAction::Push => handle_schedule(&time_spec, OperationType::Push, "push", None, None),
+            ScheduleAction::MergeCommit { from, into } => {
+                handle_schedule(&time_spec, OperationType::MergeCommit, &format!("merge-commit {} into {}", from, into), Some(from), Some(into))
+            }
         }
         Commands::List => {
             handle_list()
@@ -98,7 +110,7 @@ pub fn run() -> Result<()> {
     }
 }
 
-fn handle_schedule(time_spec: &str, operation_type: OperationType, message: &str) -> Result<()> {
+fn handle_schedule(time_spec: &str, operation_type: OperationType, message: &str, source_branch: Option<String>, target_branch: Option<String>) -> Result<()> {
     let repo_path = git::get_repository_path()?;
     let scheduled_time = schedule::parse_time_spec(time_spec)?;
     
@@ -119,6 +131,8 @@ fn handle_schedule(time_spec: &str, operation_type: OperationType, message: &str
         retry_count: 0,
         state: crate::models::OperationState::Pending,
         branch,
+        source_branch,
+        target_branch,
     };
     
     storage::add_scheduled_operation(operation.clone())?;
