@@ -16,6 +16,7 @@ fi
 echo "Installing binary to $INSTALL_DIR..."
 sudo cp target/release/git-delayed "$INSTALL_DIR/"
 sudo chmod +x "$INSTALL_DIR/git-delayed"
+sudo codesign --force --sign - "$INSTALL_DIR/git-delayed"
 
 echo "✓ Binary installed to $INSTALL_DIR/git-delayed"
 
